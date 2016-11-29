@@ -12,7 +12,6 @@ __author__ = 'Stuart Pittaway'
 import time
 import argparse
 import sys
-import traceback
 import paho.mqtt.client as mqtt
 import bluetooth
 import datetime
@@ -24,7 +23,7 @@ import SMASolarMQTT_library
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
-    print("Connected to MQTT with result code "+str(rc))
+    # print("Connected to MQTT with result code "+str(rc))
     pass
 
 # The callback for when a PUBLISH message is received from the server.
@@ -101,9 +100,9 @@ def main(bd_addr, InverterPassword, mqtt_initial_node):
 
 
             # Format the MQTT topics to publish values under
-            mqtt_prefix = "emonhub/rx"
-            topic_spotvalues_ac = "{0}/{1}/values".format(mqtt_prefix, mqtt_initial_node)
-            topic_spotvalues_dcwatts = "{0}/{1}/values".format(mqtt_prefix, mqtt_initial_node + 1)
+            mqtt_prefix = "emon/SMASolar"
+            #topic_spotvalues_ac = "{0}/{1}/values".format(mqtt_prefix, mqtt_initial_node)
+            #topic_spotvalues_dcwatts = "{0}/{1}/values".format(mqtt_prefix, mqtt_initial_node + 1)
             topic_spotvalues_yield = "{0}/{1}/values".format(mqtt_prefix, mqtt_initial_node + 2)
             topic_spotvalues_dc = "{0}/{1}/values".format(mqtt_prefix, mqtt_initial_node + 3)
             topic_errors = "{0}/{1}/values".format(mqtt_prefix, mqtt_initial_node + 4)
@@ -117,7 +116,7 @@ def main(bd_addr, InverterPassword, mqtt_initial_node):
                 if packet_send_counter > 200:
                     packet_send_counter = 0
 
-                print("ac")
+                # print("ac")
                 L2 = SMASolarMQTT_library.spotvalues_ac(btSocket, packet_send_counter, mylocalBTAddress,
                                                         InverterCodeArray,
                                                         AddressFFFFFFFF)
@@ -134,27 +133,30 @@ def main(bd_addr, InverterPassword, mqtt_initial_node):
                 # 0x4651 AC Line Current Phase 2
                 # 0x4652 AC Line Current Phase 3
                 # 0x4657 AC Grid Frequency
-                payload = "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}".format(L2[1][1], L2[2][1], L2[3][1], L2[4][1],
-                                                                           L2[5][1],
-                                                                           L2[6][1], L2[7][1], L2[8][1], L2[9][1],
-                                                                           L2[10][1])
-                client.publish(topic_spotvalues_ac, payload=payload, qos=0, retain=False)
-                time.sleep(1)
+                #payload = "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}".format(L2[1][1], L2[2][1], L2[3][1], L2[4][1],
+                #                                                           L2[5][1],
+                #                                                           L2[6][1], L2[7][1], L2[8][1], L2[9][1],
+                #                                                           L2[10][1])
+                #client.publish(topic_spotvalues_ac, payload=payload, qos=0, retain=False)
+                client.publish("emon/SMASolar/ACOutputPhase1", payload=L2[1][1], qos=0, retain=False)
+                client.publish("emon/SMASolar/ACLineVoltagePhase1", payload=L2[4][1], qos=0, retain=False)
+                client.publish("emon/SMASolar/ACLineCurrentPhase1", payload=L2[7][1], qos=0, retain=False)
+		time.sleep(2)
 
-                print("dc watts")
                 L2 = SMASolarMQTT_library.spotvalues_dcwatts(btSocket, packet_send_counter, mylocalBTAddress,
                                                               InverterCodeArray,
                                                               AddressFFFFFFFF)
-                #0x251e DC Power Watts
+                # #0x251e DC Power Watts
                 packet_send_counter += 1
-                payload = "{0}".format(L2[1][1])
-                client.publish(topic_spotvalues_dcwatts, payload=payload, qos=0, retain=False)
+                payload = "{0},{1}".format(L2[1][1], L2[2][1])
+                client.publish("emon/SMASolar/String1_DCWatts", payload=L2[1][1], qos=0, retain=False)
+                client.publish("emon/SMASolar/String2_DCWatts", payload=L2[2][1], qos=0, retain=False)
                 time.sleep(1)
 
 
                 if (packet_send_counter % 6==0):
                     # Only run this function every few packets as its a slowly changing total number
-                    print("yield")
+                    # print("yield")
                     L2 = SMASolarMQTT_library.spotvalues_yield(btSocket, packet_send_counter, mylocalBTAddress,
                                                                InverterCodeArray,
                                                                AddressFFFFFFFF)
@@ -163,48 +165,54 @@ def main(bd_addr, InverterPassword, mqtt_initial_node):
                     # 0x462e Operating time (hours)
                     # 0x462f Feed in time (hours)
                     packet_send_counter += 1
-                    payload = "{0},{1},{2},{3}".format(L2[1][1], L2[2][1], L2[3][1], L2[4][1])
-                    client.publish(topic_spotvalues_yield, payload=payload, qos=0, retain=False)
+                    #payload = "{0},{1},{2},{3}".format(L2[1][1], L2[2][1], L2[3][1], L2[4][1])
+                    client.publish("emon/SMASolar/TotalYield", payload=L2[1][1], qos=0, retain=False)
+                    client.publish("emon/SMASolar/DayYield", payload=L2[2][1], qos=0, retain=False)
+                    client.publish("emon/SMASolar/OperatingTime", payload=L2[3][1], qos=0, retain=False)
+                    client.publish("emon/SMASolar/FeedInTime", payload=L2[4][1], qos=0, retain=False)
                     time.sleep(1)
 
-                    #print("dc v/a")
+                    # print("dc v/a")
                     # These values only update every 5 mins by the inverter.
                     #0x451f DC Voltage V
                     #0x4521 DC Current A
-                    #L2 = SMASolarMQTT_library.spotvalues_dc(btSocket, packet_send_counter, mylocalBTAddress,
-                    #                                        InverterCodeArray,
-                    #                                        AddressFFFFFFFF)
-                    #packet_send_counter += 1
-                    #payload = "{0},{1}".format(L2[1][1], L2[2][1])
-                    #client.publish(topic_spotvalues_dc, payload=payload, qos=0, retain=False)
-                    #time.sleep(1)
+                    L2 = SMASolarMQTT_library.spotvalues_dc(btSocket, packet_send_counter, mylocalBTAddress,
+                                                            InverterCodeArray,
+                                                            AddressFFFFFFFF)
+                    packet_send_counter += 1
+                    payload = "{0},{1},{2},{3}".format(L2[1][1], L2[2][1], L2[3][1], L2[4][1])
+                    client.publish("emon/SMASolar/String1_DCVoltage", payload=L[1][1], qos=0, retain=False)
+                    client.publish("emon/SMASolar/String2_DCVoltage", payload=L[2][1], qos=0, retain=False)
+                    client.publish("emon/SMASolar/String1_DCCurrent", payload=L[3][1], qos=0, retain=False)
+                    client.publish("emon/SMASolar/String2_DCCurrent", payload=L[4][1], qos=0, retain=False)
+                    time.sleep(1)
 
 
                 # Delay to give PI some CPU back and avoid drowning the SMA inverter with BT traffic
                 time.sleep(5)
 
         except bluetooth.btcommon.BluetoothError as inst:
-            print("Bluetooth Error")
+            # print("Bluetooth Error")
             # print >>sys.stderr, type(inst)     # the exception instance
             # print >>sys.stderr, inst.args      # arguments stored in .args
             # print >>sys.stderr, inst           # __str__ allows args to printed directly
-            print(datetime.now().isoformat())
-            traceback.print_exc(file=sys.stderr)
+            # print(datetime.now().isoformat())
+            # traceback.print_exc(file=sys.stderr)
             btSocket.close()
             error_count+=1
             payload = "{0}".format(error_count)
-            client.publish(topic_errors, payload=payload, qos=0, retain=False)
+            #client.publish(topic_errors, payload=payload, qos=0, retain=False)
 
         except Exception as inst:
             # print >>sys.stderr, type(inst)     # the exception instance
             # print >>sys.stderr, inst.args      # arguments stored in .args
             # print >>sys.stderr, inst           # __str__ allows args to printed directly
-            print(datetime.now().isoformat())
-            traceback.print_exc(file=sys.stderr)
+            # print(datetime.now().isoformat())
+            # traceback.print_exc(file=sys.stderr)
             btSocket.close()
             error_count+=1
             payload = "{0}".format(error_count)
-            client.publish(topic_errors, payload=payload, qos=0, retain=False)
+            #client.publish(topic_errors, payload=payload, qos=0, retain=False)
 
 
 parser = argparse.ArgumentParser(

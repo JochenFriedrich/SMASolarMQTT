@@ -1,0 +1,13 @@
+[Unit]
+Description=SMA Solar Inverter upload via MQTT
+After=emonhub.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python /home/pi/SMASolarMQTT/SMASolarMQTT.py 00:80:25:32:30:55 0000 50 
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target
+
