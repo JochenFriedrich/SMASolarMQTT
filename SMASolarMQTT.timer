@@ -1,0 +1,8 @@
+[Unit]
+Description=SMA Solar Inverter upload via MQTT timer
+
+[Timer]
+OnCalendar=*:0/5
+
+[Install]
+WantedBy=timers.target

@@ -357,6 +357,21 @@ def spotvalues_yield(btSocket, packet_send_counter, mylocalBTAddress, InverterCo
         print("Error code returned from inverter")
     return extract_spot_values(bluetoothbuffer.leveltwo, 16)
 
+def spotvalues_actotal(btSocket, packet_send_counter, mylocalBTAddress, InverterCodeArray, AddressFFFFFFFF):
+    send9 = SMABluetoothPacket(1, 1, 0x00, 0x01, 0x00, mylocalBTAddress, AddressFFFFFFFF)
+    pluspacket9 = SMANET2PlusPacket(0x09, 0xA0, packet_send_counter, InverterCodeArray, 0x00, 0x00, 0x00)
+    pluspacket9.pushRawByteArray(bytearray([0x80, 0x00, 0x02, 0x00,
+                                            0x51, 0x00, 0x3f, 0x26,
+                                            0x00, 0xFF, 0x40, 0x26,
+                                            0x00 ]))
+    send9.pushRawByteArray(pluspacket9.getBytesForSending())
+    send9.finish()
+    send9.sendPacket(btSocket)
+    bluetoothbuffer = read_SMA_BT_Packet(btSocket, packet_send_counter, True,mylocalBTAddress)
+    if bluetoothbuffer.leveltwo.errorCode() > 0:
+        print("Error code returned from inverter")
+    return extract_spot_values(bluetoothbuffer.leveltwo, 28)
+
 
 def spotvalues_dc(btSocket, packet_send_counter, mylocalBTAddress, InverterCodeArray, AddressFFFFFFFF):
     #print "Asking inverter for its DC spot value data...."
